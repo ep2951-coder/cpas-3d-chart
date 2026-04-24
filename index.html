@@ -29,7 +29,6 @@
     padding: 0;
   }
 
-  /* ── Outer card ── */
   .chart-card {
     background: var(--adjust);
     border-radius: 0;
@@ -37,7 +36,6 @@
     margin-bottom: 0;
   }
 
-  /* ── Arrow row (sits ABOVE the chart, never overlaps) ── */
   .arrow-row {
     display: flex;
     align-items: center;
@@ -66,13 +64,13 @@
   .arrow-btn:active { background: rgba(255,255,255,0.28); }
   .arrow-btn:disabled { opacity: 0.28; cursor: default; }
 
-  /* ── Chart layout: pinned Y-axis + scrollable bars ── */
+
   .chart-shell {
     display: flex;
     align-items: stretch;
   }
 
-  /* Pinned Y-axis column */
+
   .yaxis-col {
     flex-shrink: 0;
     width: 72px;
@@ -86,7 +84,7 @@
     height: 100%;
   }
 
-  /* Scrollable bar area */
+
   .scroll-area-wrapper {
     flex: 1;
     min-width: 0;
@@ -95,12 +93,12 @@
   .scroll-area {
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: none;        /* Firefox */
-    -ms-overflow-style: none;     /* IE/Edge */
+    scrollbar-width: none;        
+    -ms-overflow-style: none;     
   }
-  .scroll-area::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+  .scroll-area::-webkit-scrollbar { display: none; } 
 
-  /* ── Tooltip ── */
+  /* ── tooltip ── */
   .chart-tooltip {
     position: fixed;
     background: #ffffff;
@@ -142,7 +140,7 @@
   .tt-name  { font-size: 1rem; font-weight: 400; line-height: 1.25rem; color: var(--text-dark); }
   .tt-count { font-size: 1rem; font-weight: 700; line-height: 1.25rem; color: var(--adjust); }
 
-  /* ── Legend card ── */
+  /* ── legend card ── */
   .legend-card {
     background: var(--adjust);
     border-radius: 0;
@@ -196,15 +194,14 @@
 </head>
 <body>
 
-<!-- Chart card -->
 <div class="chart-card">
-  <!-- Scroll arrows (above the chart, never overlapping) -->
+  <!--scroll arrows  -->
   <div class="arrow-row">
     <button class="arrow-btn" id="btnLeft"  aria-label="Scroll left">&#8592;</button>
     <button class="arrow-btn" id="btnRight" aria-label="Scroll right">&#8594;</button>
   </div>
 
-  <!-- Pinned Y-axis + scrollable bars side by side -->
+  <!-- pinned Y-axis and scrollable bars side by side -->
   <div class="chart-shell">
     <div class="yaxis-col" id="yaxisCol">
       <canvas id="yaxisCanvas"></canvas>
@@ -217,7 +214,7 @@
   </div>
 </div>
 
-<!-- Legend -->
+<!-- legend -->
 <div class="legend-card">
   <div class="legend-header">
     <div class="legend-title">Click any mission to highlight</div>
@@ -225,11 +222,11 @@
   <div class="legend-grid" id="legendGrid"></div>
 </div>
 
-<!-- Tooltip -->
+<!-- tooltip -->
 <div class="chart-tooltip" id="tooltip"></div>
 
 <script>
-/* ── Data ── */
+/* ── data from Ellen's website ── */
 const missions = [
   { key: 'MINUSCA', color: '#009EDB' },
   { key: 'MONUSCO', color: '#DAA520' },
@@ -271,24 +268,24 @@ const chartData = [
 ];
 
 // ═══════════════════════════════════════════════
-// API CONFIGURATION
-// To connect live data, set USE_API to true and
+// note on the API configuration
+// to connect live data, set USE_API to true and
 // fill in your endpoint and key below.
 // ═══════════════════════════════════════════════
 const USE_API = false;
-const API_URL = 'https://YOUR_CPAS_API_ENDPOINT_HERE'; // ← replace with CPAS API URL
-const API_KEY = 'YOUR_API_KEY_HERE';                   // ← replace with CPAS API key
+const API_URL = 'https://YOUR_CPAS_API_ENDPOINT_HERE'; // replace with CPAS API URL
+const API_KEY = 'YOUR_API_KEY_HERE';                   // replace with CPAS API key
 // Expected API response format:
 // [{ quarter: 'Q1 2020', MINUSCA: 416, MONUSCO: 0, ... }, ...]
 // ═══════════════════════════════════════════════
 
-/* ── Config ── */
-const BAR_W   = 38;    // px per bar column
-const CHART_H = 460;   // match original height
+/* ── config ── */
+const BAR_W   = 38;   
+const CHART_H = 460;   
 const labels  = chartData.map(d => d.quarter);
 let selectedMissions = [];
 
-/* ── Dataset builder ── */
+/* ── dataset builder ── */
 function buildDatasets() {
   return missions.map(m => ({
     label: m.key,
@@ -303,7 +300,7 @@ function buildDatasets() {
   }));
 }
 
-/* ── 3-D plugin ── */
+/* ── 3d plugin ── */
 function lighten(hex, p) {
   const [r,g,b] = hexRgb(hex);
   return `rgb(${Math.min(255,r+p*2)},${Math.min(255,g+p*2)},${Math.min(255,b+p*2)})`;
@@ -353,7 +350,7 @@ const threeDPlugin = {
 
 Chart.register(threeDPlugin);
 
-/* ── Size the scrollable canvas ── */
+/* ── scrollable canvas ── */
 const totalCols = labels.length;
 const canvasW   = totalCols * (BAR_W + 18) + 48;
 
@@ -363,7 +360,7 @@ mainCanvas.style.width  = canvasW + 'px';
 mainCanvas.style.height = CHART_H + 'px';
 mainCanvas.height       = CHART_H;
 
-/* ── Main chart (Y-axis hidden — drawn separately) ── */
+/* ── main chart (note: y-axis is hidden, it will be drawn separately) ── */
 const chart = new Chart(mainCanvas.getContext('2d'), {
   type: 'bar',
   data: { labels, datasets: buildDatasets() },
@@ -390,7 +387,7 @@ const chart = new Chart(mainCanvas.getContext('2d'), {
       },
       y: {
         stacked: true,
-        display: false,   /* hidden — mirrored on yaxisCanvas */
+        display: false,   
         min: 0,
         max: 100000,
         ticks: {
@@ -406,7 +403,7 @@ const chart = new Chart(mainCanvas.getContext('2d'), {
   },
 });
 
-/* ── Pinned Y-axis chart ── */
+/* ── y-axis chart ── */
 const yCanvas  = document.getElementById('yaxisCanvas');
 let   yChart   = null;
 
@@ -453,7 +450,6 @@ function syncYAxis() {
   });
 }
 
-/* First render: draw synchronously then build Y-axis */
 chart.options.animation = { duration: 0 };
 requestAnimationFrame(() => {
   chart.update();
@@ -461,7 +457,7 @@ requestAnimationFrame(() => {
   chart.options.animation = { duration: 350 };
 });
 
-/* ── Scroll arrows ── */
+/* ── scroll arrows ── */
 const scrollArea  = document.getElementById('scrollArea');
 const SCROLL_STEP = (BAR_W + 18) * 4;
 
@@ -482,15 +478,14 @@ document.getElementById('btnRight').addEventListener('click', () => {
 scrollArea.addEventListener('scroll', updateArrows);
 setTimeout(updateArrows, 120);
 
-/* ── Tooltip — side decided once on mouseenter, frozen until mouseleave ── */
+/* ── tooltip ── */
 const tooltip   = document.getElementById('tooltip');
 const TT_W      = 278;
 const TT_OFFSET = 18;
 let lastIdx     = -1;
-let tooltipSide = null; // set ONCE on mouseenter, never touched again until mouseleave
+let tooltipSide = null; 
 
 mainCanvas.addEventListener('mouseenter', (e) => {
-  // Lock the side the very moment the cursor enters the canvas
   tooltipSide = (e.clientX + TT_OFFSET + TT_W) <= (window.innerWidth - 8) ? 'right' : 'left';
 });
 
@@ -526,7 +521,6 @@ mainCanvas.addEventListener('mousemove', (e) => {
     lastIdx = idx;
   }
 
-  // Position uses the frozen side — no recalculation, no flipping
   const tx = tooltipSide === 'right' ? e.clientX + TT_OFFSET : e.clientX - TT_W - TT_OFFSET;
   const TH = 400;
   const vh = window.innerHeight;
@@ -545,7 +539,7 @@ mainCanvas.addEventListener('mouseleave', () => {
   tooltipSide = null;
 });
 
-/* ── Legend ── */
+/* ── legend ── */
 const grid = document.getElementById('legendGrid');
 missions.forEach(m => {
   const item = document.createElement('div');
