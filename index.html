@@ -64,12 +64,10 @@
   .arrow-btn:active { background: rgba(255,255,255,0.28); }
   .arrow-btn:disabled { opacity: 0.28; cursor: default; }
 
-
   .chart-shell {
     display: flex;
     align-items: stretch;
   }
-
 
   .yaxis-col {
     flex-shrink: 0;
@@ -84,7 +82,6 @@
     height: 100%;
   }
 
-
   .scroll-area-wrapper {
     flex: 1;
     min-width: 0;
@@ -93,10 +90,10 @@
   .scroll-area {
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: none;        
-    -ms-overflow-style: none;     
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
-  .scroll-area::-webkit-scrollbar { display: none; } 
+  .scroll-area::-webkit-scrollbar { display: none; }
 
   /* ── tooltip ── */
   .chart-tooltip {
@@ -195,13 +192,10 @@
 <body>
 
 <div class="chart-card">
-  <!--scroll arrows  -->
   <div class="arrow-row">
     <button class="arrow-btn" id="btnLeft"  aria-label="Scroll left">&#8592;</button>
     <button class="arrow-btn" id="btnRight" aria-label="Scroll right">&#8594;</button>
   </div>
-
-  <!-- pinned Y-axis and scrollable bars side by side -->
   <div class="chart-shell">
     <div class="yaxis-col" id="yaxisCol">
       <canvas id="yaxisCanvas"></canvas>
@@ -214,7 +208,6 @@
   </div>
 </div>
 
-<!-- legend -->
 <div class="legend-card">
   <div class="legend-header">
     <div class="legend-title">Click any mission to highlight</div>
@@ -222,11 +215,9 @@
   <div class="legend-grid" id="legendGrid"></div>
 </div>
 
-<!-- tooltip -->
 <div class="chart-tooltip" id="tooltip"></div>
 
 <script>
-/* ── data from Ellen's website ── */
 const missions = [
   { key: 'MINUSCA', color: '#009EDB' },
   { key: 'MONUSCO', color: '#DAA520' },
@@ -242,7 +233,18 @@ const missions = [
   { key: 'MINUSMA', color: '#FFFFFF' },
 ];
 
-const chartData = [
+// ═══════════════════════════════════════════════
+// API CONFIGURATION
+// Set USE_API = true and fill in API_URL when
+// connecting to the real CPAS API via Cloudflare Worker.
+// For R2 static file, API_KEY can stay blank.
+// ═══════════════════════════════════════════════
+const USE_API = true;
+const API_URL = 'https://pub-38858af852914e06a374e08f6544a576.r2.dev/dashboard-data.json';
+const API_KEY = ''; // leave blank for R2 — fill in when using real API via Worker
+
+// Fallback hardcoded data (used if fetch fails)
+const fallbackData = [
   { quarter:'Q4 2019', UNFICYP:337,  UNIFIL:22,   UNMISS:12,   MINUSCA:158,   MONUSCO:0,     MINUSMA:0, UNMIK:0,    MINURSO:0,  UNMOGIP:0,    UNTSO:0,    UNISFA:0,  UNDOF:0    },
   { quarter:'Q1 2020', UNFICYP:515,  UNIFIL:45,   UNMISS:108,  MINUSCA:416,   MONUSCO:0,     MINUSMA:0, UNMIK:0,    MINURSO:0,  UNMOGIP:0,    UNTSO:0,    UNISFA:0,  UNDOF:0    },
   { quarter:'Q2 2020', UNFICYP:658,  UNIFIL:45,   UNMISS:108,  MINUSCA:1053,  MONUSCO:0,     MINUSMA:0, UNMIK:0,    MINURSO:0,  UNMOGIP:0,    UNTSO:0,    UNISFA:0,  UNDOF:0    },
@@ -267,19 +269,15 @@ const chartData = [
   { quarter:'Q1 2025', UNFICYP:7175, UNIFIL:1652, UNMISS:6796, MINUSCA:59419, MONUSCO:11002, MINUSMA:0, UNMIK:2198, MINURSO:553,UNMOGIP:3088, UNTSO:3261, UNISFA:876,UNDOF:2313 },
 ];
 
-const USE_API = true;
-const API_URL = 'https://pub-38858af852914e06a374e08f6544a576.r2.dev/dashboard-data.json';
-const API_KEY = '';
-
-const BAR_W   = 38;   
-const CHART_H = 460;   
-const labels  = chartData.map(d => d.quarter);
+const BAR_W   = 38;
+const CHART_H = 460;
 let selectedMissions = [];
+let activeData = [];
 
-function buildDatasets() {
+function buildDatasets(data) {
   return missions.map(m => ({
     label: m.key,
-    data: chartData.map(d => d[m.key]),
+    data: data.map(d => d[m.key] || 0),
     backgroundColor: selectedMissions.length === 0 || selectedMissions.includes(m.key)
       ? m.color : m.color + '28',
     borderColor: 'transparent',
@@ -290,7 +288,6 @@ function buildDatasets() {
   }));
 }
 
-/* ── 3d plugin ── */
 function lighten(hex, p) {
   const [r,g,b] = hexRgb(hex);
   return `rgb(${Math.min(255,r+p*2)},${Math.min(255,g+p*2)},${Math.min(255,b+p*2)})`;
@@ -320,13 +317,11 @@ const threeDPlugin = {
         ctx.save();
         ctx.globalAlpha = isFaded ? 0.08 : 1;
         const left = x - width / 2, right = x + width / 2;
-
         ctx.beginPath();
         ctx.moveTo(left, y); ctx.lineTo(left+depth, y-depth);
         ctx.lineTo(right+depth, y-depth); ctx.lineTo(right, y);
         ctx.closePath();
         ctx.fillStyle = lighten(color, 35); ctx.fill();
-
         ctx.beginPath();
         ctx.moveTo(right, y); ctx.lineTo(right+depth, y-depth);
         ctx.lineTo(right+depth, base-depth); ctx.lineTo(right, base);
@@ -340,273 +335,225 @@ const threeDPlugin = {
 
 Chart.register(threeDPlugin);
 
-/* ── scrollable canvas ── */
-const totalCols = labels.length;
-const canvasW   = totalCols * (BAR_W + 18) + 48;
+function initChart(data) {
+  activeData = data;
+  const labels  = data.map(d => d.quarter);
+  const totalCols = labels.length;
+  const canvasW   = totalCols * (BAR_W + 18) + 48;
 
-const mainCanvas = document.getElementById('missionChart');
-mainCanvas.width        = canvasW;
-mainCanvas.style.width  = canvasW + 'px';
-mainCanvas.style.height = CHART_H + 'px';
-mainCanvas.height       = CHART_H;
+  const mainCanvas = document.getElementById('missionChart');
+  mainCanvas.width        = canvasW;
+  mainCanvas.style.width  = canvasW + 'px';
+  mainCanvas.style.height = CHART_H + 'px';
+  mainCanvas.height       = CHART_H;
 
-/* ── main chart ── */
-const chart = new Chart(mainCanvas.getContext('2d'), {
-  type: 'bar',
-  data: { labels, datasets: buildDatasets() },
-  options: {
-    responsive: false,
-    maintainAspectRatio: false,
-    animation: { duration: 350 },
-    layout: { padding: { left: 0, right: 16 } },
-    plugins: {
-      legend:  { display: false },
-      tooltip: { enabled: false },
-    },
-    scales: {
-      x: {
-        stacked: true,
-        ticks: {
-          color: 'rgba(255,255,255,0.55)',
-          font: { family: 'Roboto', size: 13, weight: '400' },
-          maxRotation: 45,
-          minRotation: 45,
-        },
-        grid:   { color: 'transparent' },
-        border: { color: 'rgba(185,221,241,0.2)' },
-      },
-      y: {
-        stacked: true,
-        display: false,   
-        min: 0,
-        max: 100000,
-        ticks: {
-          color: 'rgba(255,255,255,0.55)',
-          font: { family: 'Roboto', size: 13, weight: '400' },
-          stepSize: 10000,
-          callback: v => v >= 1000 ? (v/1000).toFixed(0)+'K' : '0',
-        },
-        grid:   { color: 'rgba(185,221,241,0.08)' },
-        border: { color: 'transparent' },
-      },
-    },
-  },
-});
-
-/* ── y-axis chart ── */
-const yCanvas  = document.getElementById('yaxisCanvas');
-let   yChart   = null;
-
-function syncYAxis() {
-  const chartArea = chart.chartArea;
-  if (!chartArea) return;
-
-  const h = CHART_H;
-  const yCol = document.getElementById('yaxisCol');
-  yCol.style.height  = h + 'px';
-  yCanvas.style.height = h + 'px';
-  yCanvas.height       = h;
-  yCanvas.width        = 72;
-
-  if (yChart) { yChart.destroy(); yChart = null; }
-
-  yChart = new Chart(yCanvas.getContext('2d'), {
+  const chart = new Chart(mainCanvas.getContext('2d'), {
     type: 'bar',
-    data: { labels: [''], datasets: [{ data: [0], stack: 'y' }] },
+    data: { labels, datasets: buildDatasets(data) },
     options: {
       responsive: false,
       maintainAspectRatio: false,
-      animation: false,
-      layout: { padding: { top: chart.chartArea.top, bottom: h - chart.chartArea.bottom } },
+      animation: { duration: 350 },
+      layout: { padding: { left: 0, right: 16 } },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
-        x: { display: false, stacked: true },
-        y: {
+        x: {
           stacked: true,
-          display: true,
-          min: 0,
-          max: 100000,
           ticks: {
             color: 'rgba(255,255,255,0.55)',
-            font: { family: 'Roboto', size: 14, weight: '400' },
+            font: { family: 'Roboto', size: 13, weight: '400' },
+            maxRotation: 45, minRotation: 45,
+          },
+          grid:   { color: 'transparent' },
+          border: { color: 'rgba(185,221,241,0.2)' },
+        },
+        y: {
+          stacked: true, display: false,
+          min: 0, max: 100000,
+          ticks: {
+            color: 'rgba(255,255,255,0.55)',
+            font: { family: 'Roboto', size: 13, weight: '400' },
             stepSize: 10000,
             callback: v => v >= 1000 ? (v/1000).toFixed(0)+'K' : '0',
           },
-          grid:   { color: 'rgba(185,221,241,0.08)', drawTicks: false },
+          grid: { color: 'rgba(185,221,241,0.08)' },
           border: { color: 'transparent' },
         },
       },
     },
   });
-}
 
-chart.options.animation = { duration: 0 };
-requestAnimationFrame(() => {
-  chart.update();
-  syncYAxis();
-  chart.options.animation = { duration: 350 };
-});
+  const yCanvas = document.getElementById('yaxisCanvas');
+  let yChart = null;
 
-/* ── scroll arrows ── */
-const scrollArea  = document.getElementById('scrollArea');
-const SCROLL_STEP = (BAR_W + 18) * 4;
-
-function updateArrows() {
-  const sl       = scrollArea.scrollLeft;
-  const maxScroll = scrollArea.scrollWidth - scrollArea.clientWidth;
-  document.getElementById('btnLeft').disabled  = sl <= 0;
-  document.getElementById('btnRight').disabled = sl >= maxScroll - 1;
-}
-
-document.getElementById('btnLeft').addEventListener('click', () => {
-  scrollArea.scrollBy({ left: -SCROLL_STEP, behavior: 'smooth' });
-});
-document.getElementById('btnRight').addEventListener('click', () => {
-  scrollArea.scrollBy({ left: SCROLL_STEP, behavior: 'smooth' });
-});
-
-scrollArea.addEventListener('scroll', updateArrows);
-setTimeout(updateArrows, 120);
-
-/* ── tooltip ── */
-const tooltip   = document.getElementById('tooltip');
-const TT_MARGIN = 8;   /* min gap from viewport edge */
-const TT_OFFSET = 18;  /* preferred gap from cursor   */
-let lastIdx     = -1;
-let tooltipSide = 'right'; /* decided once on mouseenter, held stable */
-
-/* Build tooltip HTML once per new column */
-function buildTooltipHTML(idx) {
-  const row    = chartData[idx];
-  const active = missions.filter(m => row[m.key] > 0);
-  const total  = active.reduce((s, m) => s + row[m.key], 0);
-  return `
-    <div class="tt-label">Quarter</div>
-    <div class="tt-val">${row.quarter}</div>
-    <div class="tt-total-label">Total data points</div>
-    <div class="tt-total-val">${total.toLocaleString()}</div>
-    <div class="tt-missions">
-      ${active.map(m => `
-        <div class="tt-row">
-          <div class="tt-left">
-            <span class="tt-dot" style="background:${m.color}"></span>
-            <span class="tt-name">${m.key}</span>
-          </div>
-          <span class="tt-count">${row[m.key].toLocaleString()}</span>
-        </div>`).join('')}
-    </div>`;
-}
-
-/* Position tooltip — side fixed for the hover session, only vertical clamped */
-function positionTooltip(cx, cy) {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const tw = tooltip.offsetWidth  || 240;
-  const th = tooltip.offsetHeight || 300;
-
-  let tx = tooltipSide === 'right'
-    ? cx + TT_OFFSET
-    : cx - tw - TT_OFFSET;
-  if (tx < TT_MARGIN)           tx = TT_MARGIN;
-  if (tx + tw > vw - TT_MARGIN) tx = vw - tw - TT_MARGIN;
-
-  let ty = cy - 20;
-  if (ty + th > vh - TT_MARGIN) ty = vh - th - TT_MARGIN;
-  if (ty < TT_MARGIN)           ty = TT_MARGIN;
-
-  tooltip.style.left = tx + 'px';
-  tooltip.style.top  = ty + 'px';
-}
-
-mainCanvas.addEventListener('mouseenter', (e) => {
-  tooltipSide = (e.clientX + TT_OFFSET + 240) <= (window.innerWidth - TT_MARGIN) ? 'right' : 'left';
-});
-
-mainCanvas.addEventListener('mousemove', (e) => {
-  const pts = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
-  if (!pts.length) {
-    tooltip.classList.remove('visible');
-    lastIdx = -1;
-    return;
-  }
-
-  const idx = pts[0].index;
-  if (idx !== lastIdx) {
-    tooltip.innerHTML = buildTooltipHTML(idx);
-    lastIdx = idx;
-  }
-
-  positionTooltip(e.clientX, e.clientY);
-  tooltip.classList.add('visible');
-});
-
-mainCanvas.addEventListener('mouseleave', () => {
-  tooltip.classList.remove('visible');
-  lastIdx = -1;
-});
-
-/* ── touch support: show tooltip on tap, hide on tap-outside ── */
-mainCanvas.addEventListener('touchstart', (e) => {
-  const touch = e.touches[0];
-  /* Synthesise a mouse-like event so getElementsAtEventForMode works */
-  const rect  = mainCanvas.getBoundingClientRect();
-  const fakeE = {
-    clientX: touch.clientX,
-    clientY: touch.clientY,
-    target:  mainCanvas,
-    /* Chart.js needs offsetX/Y relative to the canvas */
-    offsetX: touch.clientX - rect.left,
-    offsetY: touch.clientY - rect.top,
-  };
-
-  const pts = chart.getElementsAtEventForMode(fakeE, 'index', { intersect: false }, true);
-  if (!pts.length) {
-    tooltip.classList.remove('visible');
-    lastIdx = -1;
-    return;
-  }
-
-  e.preventDefault(); /* prevent the 300 ms click delay / scroll */
-
-  const idx = pts[0].index;
-  if (idx !== lastIdx) {
-    tooltip.innerHTML = buildTooltipHTML(idx);
-    lastIdx = idx;
-  }
-
-  positionTooltip(touch.clientX, touch.clientY);
-  tooltip.classList.add('visible');
-}, { passive: false });
-
-document.addEventListener('touchstart', (e) => {
-  if (!mainCanvas.contains(e.target)) {
-    tooltip.classList.remove('visible');
-    lastIdx = -1;
-  }
-});
-
-/* ── legend ── */
-const grid = document.getElementById('legendGrid');
-missions.forEach(m => {
-  const item = document.createElement('div');
-  item.className = 'legend-item';
-  item.innerHTML = `<span class="legend-dot" style="background:${m.color}"></span><span class="legend-name">${m.key}</span>`;
-  item.addEventListener('click', () => {
-    if (selectedMissions.includes(m.key)) {
-      selectedMissions = selectedMissions.filter(k => k !== m.key);
-      item.classList.remove('active');
-    } else {
-      selectedMissions.push(m.key);
-      item.classList.add('active');
-    }
-    grid.querySelectorAll('.legend-item').forEach((el, i) => {
-      el.classList.toggle('faded', selectedMissions.length > 0 && !selectedMissions.includes(missions[i].key));
+  function syncYAxis() {
+    const chartArea = chart.chartArea;
+    if (!chartArea) return;
+    const h = CHART_H;
+    const yCol = document.getElementById('yaxisCol');
+    yCol.style.height    = h + 'px';
+    yCanvas.style.height = h + 'px';
+    yCanvas.height       = h;
+    yCanvas.width        = 72;
+    if (yChart) { yChart.destroy(); yChart = null; }
+    yChart = new Chart(yCanvas.getContext('2d'), {
+      type: 'bar',
+      data: { labels: [''], datasets: [{ data: [0], stack: 'y' }] },
+      options: {
+        responsive: false, maintainAspectRatio: false, animation: false,
+        layout: { padding: { top: chart.chartArea.top, bottom: h - chart.chartArea.bottom } },
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { display: false, stacked: true },
+          y: {
+            stacked: true, display: true, min: 0, max: 100000,
+            ticks: {
+              color: 'rgba(255,255,255,0.55)',
+              font: { family: 'Roboto', size: 14, weight: '400' },
+              stepSize: 10000,
+              callback: v => v >= 1000 ? (v/1000).toFixed(0)+'K' : '0',
+            },
+            grid:   { color: 'rgba(185,221,241,0.08)', drawTicks: false },
+            border: { color: 'transparent' },
+          },
+        },
+      },
     });
-    chart.data.datasets = buildDatasets();
-    chart.update('active');
+  }
+
+  chart.options.animation = { duration: 0 };
+  requestAnimationFrame(() => {
+    chart.update();
+    syncYAxis();
+    chart.options.animation = { duration: 350 };
   });
-  grid.appendChild(item);
-});
+
+  const scrollArea  = document.getElementById('scrollArea');
+  const SCROLL_STEP = (BAR_W + 18) * 4;
+
+  function updateArrows() {
+    const sl = scrollArea.scrollLeft;
+    const maxScroll = scrollArea.scrollWidth - scrollArea.clientWidth;
+    document.getElementById('btnLeft').disabled  = sl <= 0;
+    document.getElementById('btnRight').disabled = sl >= maxScroll - 1;
+  }
+
+  document.getElementById('btnLeft').addEventListener('click', () => {
+    scrollArea.scrollBy({ left: -SCROLL_STEP, behavior: 'smooth' });
+  });
+  document.getElementById('btnRight').addEventListener('click', () => {
+    scrollArea.scrollBy({ left: SCROLL_STEP, behavior: 'smooth' });
+  });
+
+  scrollArea.addEventListener('scroll', updateArrows);
+  setTimeout(updateArrows, 120);
+
+  const tooltip   = document.getElementById('tooltip');
+  const TT_MARGIN = 8;
+  const TT_OFFSET = 18;
+  let lastIdx     = -1;
+  let tooltipSide = 'right';
+
+  function buildTooltipHTML(idx) {
+    const row    = data[idx];
+    const active = missions.filter(m => row[m.key] > 0);
+    const total  = active.reduce((s, m) => s + row[m.key], 0);
+    return `
+      <div class="tt-label">Quarter</div>
+      <div class="tt-val">${row.quarter}</div>
+      <div class="tt-total-label">Total data points</div>
+      <div class="tt-total-val">${total.toLocaleString()}</div>
+      <div class="tt-missions">
+        ${active.map(m => `
+          <div class="tt-row">
+            <div class="tt-left">
+              <span class="tt-dot" style="background:${m.color}"></span>
+              <span class="tt-name">${m.key}</span>
+            </div>
+            <span class="tt-count">${row[m.key].toLocaleString()}</span>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  function positionTooltip(cx, cy) {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const tw = tooltip.offsetWidth || 240, th = tooltip.offsetHeight || 300;
+    let tx = tooltipSide === 'right' ? cx + TT_OFFSET : cx - tw - TT_OFFSET;
+    if (tx < TT_MARGIN) tx = TT_MARGIN;
+    if (tx + tw > vw - TT_MARGIN) tx = vw - tw - TT_MARGIN;
+    let ty = cy - 20;
+    if (ty + th > vh - TT_MARGIN) ty = vh - th - TT_MARGIN;
+    if (ty < TT_MARGIN) ty = TT_MARGIN;
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top  = ty + 'px';
+  }
+
+  mainCanvas.addEventListener('mouseenter', (e) => {
+    tooltipSide = (e.clientX + TT_OFFSET + 240) <= (window.innerWidth - TT_MARGIN) ? 'right' : 'left';
+  });
+  mainCanvas.addEventListener('mousemove', (e) => {
+    const pts = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
+    if (!pts.length) { tooltip.classList.remove('visible'); lastIdx = -1; return; }
+    const idx = pts[0].index;
+    if (idx !== lastIdx) { tooltip.innerHTML = buildTooltipHTML(idx); lastIdx = idx; }
+    positionTooltip(e.clientX, e.clientY);
+    tooltip.classList.add('visible');
+  });
+  mainCanvas.addEventListener('mouseleave', () => { tooltip.classList.remove('visible'); lastIdx = -1; });
+
+  mainCanvas.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    const rect  = mainCanvas.getBoundingClientRect();
+    const fakeE = { clientX: touch.clientX, clientY: touch.clientY, target: mainCanvas, offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top };
+    const pts = chart.getElementsAtEventForMode(fakeE, 'index', { intersect: false }, true);
+    if (!pts.length) { tooltip.classList.remove('visible'); lastIdx = -1; return; }
+    e.preventDefault();
+    const idx = pts[0].index;
+    if (idx !== lastIdx) { tooltip.innerHTML = buildTooltipHTML(idx); lastIdx = idx; }
+    positionTooltip(touch.clientX, touch.clientY);
+    tooltip.classList.add('visible');
+  }, { passive: false });
+
+  document.addEventListener('touchstart', (e) => {
+    if (!mainCanvas.contains(e.target)) { tooltip.classList.remove('visible'); lastIdx = -1; }
+  });
+
+  const grid = document.getElementById('legendGrid');
+  missions.forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<span class="legend-dot" style="background:${m.color}"></span><span class="legend-name">${m.key}</span>`;
+    item.addEventListener('click', () => {
+      if (selectedMissions.includes(m.key)) {
+        selectedMissions = selectedMissions.filter(k => k !== m.key);
+        item.classList.remove('active');
+      } else {
+        selectedMissions.push(m.key);
+        item.classList.add('active');
+      }
+      grid.querySelectorAll('.legend-item').forEach((el, i) => {
+        el.classList.toggle('faded', selectedMissions.length > 0 && !selectedMissions.includes(missions[i].key));
+      });
+      chart.data.datasets = buildDatasets(data);
+      chart.update('active');
+    });
+    grid.appendChild(item);
+  });
+}
+
+// ── Data loading ──
+if (USE_API) {
+  const headers = API_KEY ? { 'Authorization': `Bearer ${API_KEY}` } : {};
+  fetch(API_URL, { headers })
+    .then(r => r.json())
+    .then(data => initChart(data))
+    .catch(err => {
+      console.warn('Failed to fetch data, using fallback:', err);
+      initChart(fallbackData);
+    });
+} else {
+  initChart(fallbackData);
+}
 </script>
 </body>
 </html>
