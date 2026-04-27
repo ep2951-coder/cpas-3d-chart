@@ -267,17 +267,9 @@ const chartData = [
   { quarter:'Q1 2025', UNFICYP:7175, UNIFIL:1652, UNMISS:6796, MINUSCA:59419, MONUSCO:11002, MINUSMA:0, UNMIK:2198, MINURSO:553,UNMOGIP:3088, UNTSO:3261, UNISFA:876,UNDOF:2313 },
 ];
 
-// ═══════════════════════════════════════════════
-// note on the API configuration
-// to connect live data, set USE_API to true and
-// fill in your endpoint and key below.
-// ═══════════════════════════════════════════════
 const USE_API = false;
-const API_URL = 'https://YOUR_CPAS_API_ENDPOINT_HERE'; // replace with CPAS API URL
-const API_KEY = 'YOUR_API_KEY_HERE';                   // replace with CPAS API key
-// Expected API response format:
-// [{ quarter: 'Q1 2020', MINUSCA: 416, MONUSCO: 0, ... }, ...]
-// ═══════════════════════════════════════════════
+const API_URL = 'https://YOUR_CPAS_API_ENDPOINT_HERE';
+const API_KEY = 'YOUR_API_KEY_HERE';
 
 /* ── config ── */
 const BAR_W   = 38;   
@@ -360,7 +352,7 @@ mainCanvas.style.width  = canvasW + 'px';
 mainCanvas.style.height = CHART_H + 'px';
 mainCanvas.height       = CHART_H;
 
-/* ── main chart (note: y-axis is hidden, it will be drawn separately) ── */
+/* ── main chart ── */
 const chart = new Chart(mainCanvas.getContext('2d'), {
   type: 'bar',
   data: { labels, datasets: buildDatasets() },
@@ -480,13 +472,56 @@ setTimeout(updateArrows, 120);
 
 /* ── tooltip ── */
 const tooltip   = document.getElementById('tooltip');
-const TT_W      = 278;
-const TT_OFFSET = 18;
+const TT_MARGIN = 8;   /* min gap from viewport edge */
+const TT_OFFSET = 18;  /* preferred gap from cursor   */
 let lastIdx     = -1;
-let tooltipSide = null; 
+let tooltipSide = 'right'; /* decided once on mouseenter, held stable */
+
+/* Build tooltip HTML once per new column */
+function buildTooltipHTML(idx) {
+  const row    = chartData[idx];
+  const active = missions.filter(m => row[m.key] > 0);
+  const total  = active.reduce((s, m) => s + row[m.key], 0);
+  return `
+    <div class="tt-label">Quarter</div>
+    <div class="tt-val">${row.quarter}</div>
+    <div class="tt-total-label">Total data points</div>
+    <div class="tt-total-val">${total.toLocaleString()}</div>
+    <div class="tt-missions">
+      ${active.map(m => `
+        <div class="tt-row">
+          <div class="tt-left">
+            <span class="tt-dot" style="background:${m.color}"></span>
+            <span class="tt-name">${m.key}</span>
+          </div>
+          <span class="tt-count">${row[m.key].toLocaleString()}</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+/* Position tooltip — side fixed for the hover session, only vertical clamped */
+function positionTooltip(cx, cy) {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const tw = tooltip.offsetWidth  || 240;
+  const th = tooltip.offsetHeight || 300;
+
+  let tx = tooltipSide === 'right'
+    ? cx + TT_OFFSET
+    : cx - tw - TT_OFFSET;
+  if (tx < TT_MARGIN)           tx = TT_MARGIN;
+  if (tx + tw > vw - TT_MARGIN) tx = vw - tw - TT_MARGIN;
+
+  let ty = cy - 20;
+  if (ty + th > vh - TT_MARGIN) ty = vh - th - TT_MARGIN;
+  if (ty < TT_MARGIN)           ty = TT_MARGIN;
+
+  tooltip.style.left = tx + 'px';
+  tooltip.style.top  = ty + 'px';
+}
 
 mainCanvas.addEventListener('mouseenter', (e) => {
-  tooltipSide = (e.clientX + TT_OFFSET + TT_W) <= (window.innerWidth - 8) ? 'right' : 'left';
+  tooltipSide = (e.clientX + TT_OFFSET + 240) <= (window.innerWidth - TT_MARGIN) ? 'right' : 'left';
 });
 
 mainCanvas.addEventListener('mousemove', (e) => {
@@ -498,45 +533,58 @@ mainCanvas.addEventListener('mousemove', (e) => {
   }
 
   const idx = pts[0].index;
-
   if (idx !== lastIdx) {
-    const row    = chartData[idx];
-    const active = missions.filter(m => row[m.key] > 0);
-    const total  = active.reduce((s, m) => s + row[m.key], 0);
-    tooltip.innerHTML = `
-      <div class="tt-label">Quarter</div>
-      <div class="tt-val">${row.quarter}</div>
-      <div class="tt-total-label">Total data points</div>
-      <div class="tt-total-val">${total.toLocaleString()}</div>
-      <div class="tt-missions">
-        ${active.map(m => `
-          <div class="tt-row">
-            <div class="tt-left">
-              <span class="tt-dot" style="background:${m.color}"></span>
-              <span class="tt-name">${m.key}</span>
-            </div>
-            <span class="tt-count">${row[m.key].toLocaleString()}</span>
-          </div>`).join('')}
-      </div>`;
+    tooltip.innerHTML = buildTooltipHTML(idx);
     lastIdx = idx;
   }
 
-  const tx = tooltipSide === 'right' ? e.clientX + TT_OFFSET : e.clientX - TT_W - TT_OFFSET;
-  const TH = 400;
-  const vh = window.innerHeight;
-  let ty = e.clientY - 20;
-  if (ty + TH > vh - 8) ty = vh - TH - 8;
-  if (ty < 8)           ty = 8;
-
-  tooltip.style.left = tx + 'px';
-  tooltip.style.top  = ty + 'px';
+  positionTooltip(e.clientX, e.clientY);
   tooltip.classList.add('visible');
 });
 
 mainCanvas.addEventListener('mouseleave', () => {
   tooltip.classList.remove('visible');
   lastIdx = -1;
-  tooltipSide = null;
+});
+
+/* ── touch support: show tooltip on tap, hide on tap-outside ── */
+mainCanvas.addEventListener('touchstart', (e) => {
+  const touch = e.touches[0];
+  /* Synthesise a mouse-like event so getElementsAtEventForMode works */
+  const rect  = mainCanvas.getBoundingClientRect();
+  const fakeE = {
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    target:  mainCanvas,
+    /* Chart.js needs offsetX/Y relative to the canvas */
+    offsetX: touch.clientX - rect.left,
+    offsetY: touch.clientY - rect.top,
+  };
+
+  const pts = chart.getElementsAtEventForMode(fakeE, 'index', { intersect: false }, true);
+  if (!pts.length) {
+    tooltip.classList.remove('visible');
+    lastIdx = -1;
+    return;
+  }
+
+  e.preventDefault(); /* prevent the 300 ms click delay / scroll */
+
+  const idx = pts[0].index;
+  if (idx !== lastIdx) {
+    tooltip.innerHTML = buildTooltipHTML(idx);
+    lastIdx = idx;
+  }
+
+  positionTooltip(touch.clientX, touch.clientY);
+  tooltip.classList.add('visible');
+}, { passive: false });
+
+document.addEventListener('touchstart', (e) => {
+  if (!mainCanvas.contains(e.target)) {
+    tooltip.classList.remove('visible');
+    lastIdx = -1;
+  }
 });
 
 /* ── legend ── */
