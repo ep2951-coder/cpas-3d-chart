@@ -267,17 +267,15 @@ const chartData = [
   { quarter:'Q1 2025', UNFICYP:7175, UNIFIL:1652, UNMISS:6796, MINUSCA:59419, MONUSCO:11002, MINUSMA:0, UNMIK:2198, MINURSO:553,UNMOGIP:3088, UNTSO:3261, UNISFA:876,UNDOF:2313 },
 ];
 
-const USE_API = false;
-const API_URL = 'https://YOUR_CPAS_API_ENDPOINT_HERE';
-const API_KEY = 'YOUR_API_KEY_HERE';
+const USE_API = true;
+const API_URL = 'https://pub-38858af852914e06a374e08f6544a576.r2.dev/dashboard-data.json';
+const API_KEY = '';
 
-/* ── config ── */
 const BAR_W   = 38;   
 const CHART_H = 460;   
 const labels  = chartData.map(d => d.quarter);
 let selectedMissions = [];
 
-/* ── dataset builder ── */
 function buildDatasets() {
   return missions.map(m => ({
     label: m.key,
@@ -322,13 +320,13 @@ const threeDPlugin = {
         ctx.save();
         ctx.globalAlpha = isFaded ? 0.08 : 1;
         const left = x - width / 2, right = x + width / 2;
-        /* top face */
+
         ctx.beginPath();
         ctx.moveTo(left, y); ctx.lineTo(left+depth, y-depth);
         ctx.lineTo(right+depth, y-depth); ctx.lineTo(right, y);
         ctx.closePath();
         ctx.fillStyle = lighten(color, 35); ctx.fill();
-        /* right face */
+
         ctx.beginPath();
         ctx.moveTo(right, y); ctx.lineTo(right+depth, y-depth);
         ctx.lineTo(right+depth, base-depth); ctx.lineTo(right, base);
