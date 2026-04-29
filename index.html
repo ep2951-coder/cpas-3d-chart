@@ -233,17 +233,10 @@ const missions = [
   { key: 'MINUSMA', color: '#FFFFFF' },
 ];
 
-// ═══════════════════════════════════════════════
-// API CONFIGURATION
-// Set USE_API = true and fill in API_URL when
-// connecting to the real CPAS API via Cloudflare Worker.
-// For R2 static file, API_KEY can stay blank.
-// ═══════════════════════════════════════════════
 const USE_API = true;
-const API_URL = 'https://pub-38858af852914e06a374e08f6544a576.r2.dev/dashboard-data.json';
-const API_KEY = ''; // leave blank for R2 — fill in when using real API via Worker
+const API_URL = 'https://ep2951-coder.github.io/cpas-3d-chart/dashboard-data.json';
+const API_KEY = ''; 
 
-// Fallback hardcoded data (used if fetch fails)
 const fallbackData = [
   { quarter:'Q4 2019', UNFICYP:337,  UNIFIL:22,   UNMISS:12,   MINUSCA:158,   MONUSCO:0,     MINUSMA:0, UNMIK:0,    MINURSO:0,  UNMOGIP:0,    UNTSO:0,    UNISFA:0,  UNDOF:0    },
   { quarter:'Q1 2020', UNFICYP:515,  UNIFIL:45,   UNMISS:108,  MINUSCA:416,   MONUSCO:0,     MINUSMA:0, UNMIK:0,    MINURSO:0,  UNMOGIP:0,    UNTSO:0,    UNISFA:0,  UNDOF:0    },
@@ -541,7 +534,6 @@ function initChart(data) {
   });
 }
 
-// ── Data loading ──
 if (USE_API) {
   const headers = API_KEY ? { 'Authorization': `Bearer ${API_KEY}` } : {};
   fetch(API_URL, { headers })
