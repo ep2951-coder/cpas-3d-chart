@@ -137,7 +137,6 @@
   .tt-name  { font-size: 1rem; font-weight: 400; line-height: 1.25rem; color: var(--text-dark); }
   .tt-count { font-size: 1rem; font-weight: 700; line-height: 1.25rem; color: var(--adjust); }
 
-  /* ── legend card ── */
   .legend-card {
     background: var(--adjust);
     border-radius: 0;
@@ -233,10 +232,15 @@ const missions = [
   { key: 'MINUSMA', color: '#FFFFFF' },
 ];
 
+// ── note on data and api calls ──
+// The chart-ready JSON is built nightly by a GitHub Action that pulls from
+// the UN Peace & Security Data Hub (see here: https://psdata.un.org/dataset/DPO-CPAS), transforms iterative
+// monthly values into cumulative quarterly totals per mission, and commits
+// the result to GitHub Pages. for more info, see .github/workflows/refresh-cpas-data.yml
 const USE_API = true;
 const API_URL = 'https://ep2951-coder.github.io/cpas-3d-chart/dashboard-data.json';
-const API_KEY = ''; 
 
+// from Ellen's Figma site (fallback if the fetch fails)
 const fallbackData = [
   { quarter:'Q4 2019', UNFICYP:337,  UNIFIL:22,   UNMISS:12,   MINUSCA:158,   MONUSCO:0,     MINUSMA:0, UNMIK:0,    MINURSO:0,  UNMOGIP:0,    UNTSO:0,    UNISFA:0,  UNDOF:0    },
   { quarter:'Q1 2020', UNFICYP:515,  UNIFIL:45,   UNMISS:108,  MINUSCA:416,   MONUSCO:0,     MINUSMA:0, UNMIK:0,    MINURSO:0,  UNMOGIP:0,    UNTSO:0,    UNISFA:0,  UNDOF:0    },
@@ -535,10 +539,11 @@ function initChart(data) {
 }
 
 if (USE_API) {
-  const headers = API_KEY ? { 'Authorization': `Bearer ${API_KEY}` } : {};
-  fetch(API_URL, { headers })
+  fetch(API_URL)
     .then(r => r.json())
-    .then(data => initChart(data))
+    .then(data => {
+      initChart(Array.isArray(data) && data.length ? data : fallbackData);
+    })
     .catch(err => {
       console.warn('Failed to fetch data, using fallback:', err);
       initChart(fallbackData);
