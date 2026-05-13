@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+ 
   :root {
     --adjust:     #013363;
     --plan:       #25e6d5;
@@ -19,7 +19,7 @@
     --light-grey: #B3B3B3;
     --text-dark:  #333333;
   }
-
+ 
   body {
     font-family: 'Roboto', sans-serif;
     font-size: 1rem;
@@ -28,21 +28,21 @@
     background: transparent;
     padding: 0;
   }
-
+ 
   .chart-card {
     background: var(--adjust);
     border-radius: 0;
     padding: 28px 24px 20px;
     margin-bottom: 0;
   }
-
+ 
   .arrow-row {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 12px;
   }
-
+ 
   .arrow-btn {
     background: rgba(255,255,255,0.10);
     border: 1px solid rgba(185,221,241,0.30);
@@ -63,12 +63,12 @@
   .arrow-btn:hover  { background: rgba(255,255,255,0.20); }
   .arrow-btn:active { background: rgba(255,255,255,0.28); }
   .arrow-btn:disabled { opacity: 0.28; cursor: default; }
-
+ 
   .chart-shell {
     display: flex;
     align-items: stretch;
   }
-
+ 
   .yaxis-col {
     flex-shrink: 0;
     width: 72px;
@@ -81,7 +81,7 @@
     width: 100%;
     height: 100%;
   }
-
+ 
   .scroll-area-wrapper {
     flex: 1;
     min-width: 0;
@@ -94,7 +94,7 @@
     -ms-overflow-style: none;
   }
   .scroll-area::-webkit-scrollbar { display: none; }
-
+ 
   /* ── tooltip ── */
   .chart-tooltip {
     position: fixed;
@@ -111,7 +111,7 @@
     box-shadow: 0 8px 24px rgba(1,51,99,0.12);
   }
   .chart-tooltip.visible { opacity: 1; }
-
+ 
   .tt-label {
     font-size: 1rem; font-weight: 400; line-height: 1.25rem;
     color: var(--light-grey); margin-bottom: 2px;
@@ -136,14 +136,15 @@
   .tt-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .tt-name  { font-size: 1rem; font-weight: 400; line-height: 1.25rem; color: var(--text-dark); }
   .tt-count { font-size: 1rem; font-weight: 700; line-height: 1.25rem; color: var(--adjust); }
-
+ 
+  /* ── legend card ── */
   .legend-card {
     background: var(--adjust);
     border-radius: 0;
     padding: 22px 24px;
     border-top: 1px solid rgba(185,221,241,0.15);
   }
-
+ 
   .legend-header {
     display: flex; align-items: baseline;
     justify-content: space-between;
@@ -152,13 +153,13 @@
   .legend-title {
     font-size: 1rem; font-weight: 700; line-height: 1.25rem; color: #ffffff;
   }
-
+ 
   .legend-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 8px;
   }
-
+ 
   @media (max-width: 900px) { .legend-grid { grid-template-columns: repeat(4, 1fr); } }
   @media (max-width: 600px) {
     .chart-card  { padding: 16px 12px 12px; }
@@ -167,7 +168,7 @@
     .legend-item { padding: 5px 8px; }
     .legend-name { font-size: 0.78rem; }
   }
-
+ 
   .legend-item {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 14px; border-radius: 999px;
@@ -189,7 +190,7 @@
 </style>
 </head>
 <body>
-
+ 
 <div class="chart-card">
   <div class="arrow-row">
     <button class="arrow-btn" id="btnLeft"  aria-label="Scroll left">&#8592;</button>
@@ -206,16 +207,16 @@
     </div>
   </div>
 </div>
-
+ 
 <div class="legend-card">
   <div class="legend-header">
     <div class="legend-title">Click any mission to highlight</div>
   </div>
   <div class="legend-grid" id="legendGrid"></div>
 </div>
-
+ 
 <div class="chart-tooltip" id="tooltip"></div>
-
+ 
 <script>
 const missions = [
   { key: 'MINUSCA', color: '#009EDB' },
@@ -231,7 +232,7 @@ const missions = [
   { key: 'UNDOF',   color: '#FF7F50' },
   { key: 'MINUSMA', color: '#FFFFFF' },
 ];
-
+ 
 // ── note on data and api calls ──
 // The chart-ready JSON is built nightly by a GitHub Action that pulls from
 // the UN Peace & Security Data Hub (see here: https://psdata.un.org/dataset/DPO-CPAS), transforms iterative
@@ -266,11 +267,11 @@ const fallbackData = [
   { quarter:'Q1 2025', UNFICYP:7175, UNIFIL:1652, UNMISS:6796, MINUSCA:59419, MONUSCO:11002, MINUSMA:0, UNMIK:2198, MINURSO:553,UNMOGIP:3088, UNTSO:3261, UNISFA:876,UNDOF:2313 },
 ];
 
-const BAR_W   = 38;
+ const BAR_W   = 38;
 const CHART_H = 460;
 let selectedMissions = [];
 let activeData = [];
-
+ 
 function buildDatasets(data) {
   return missions.map(m => ({
     label: m.key,
@@ -284,7 +285,7 @@ function buildDatasets(data) {
     _key: m.key,
   }));
 }
-
+ 
 function lighten(hex, p) {
   const [r,g,b] = hexRgb(hex);
   return `rgb(${Math.min(255,r+p*2)},${Math.min(255,g+p*2)},${Math.min(255,b+p*2)})`;
@@ -297,7 +298,7 @@ function hexRgb(hex) {
   const h = hex.replace('#','');
   return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
 }
-
+ 
 const threeDPlugin = {
   id: 'threeD',
   afterDatasetsDraw(chart) {
@@ -329,21 +330,29 @@ const threeDPlugin = {
     });
   }
 };
-
+ 
 Chart.register(threeDPlugin);
-
+ 
 function initChart(data) {
   activeData = data;
   const labels  = data.map(d => d.quarter);
   const totalCols = labels.length;
   const canvasW   = totalCols * (BAR_W + 18) + 48;
-
+  const stackTotals = data.map(d =>
+    missions.reduce((sum, m) => sum + (d[m.key] || 0), 0)
+  );
+  const dataMax = Math.max(0, ...stackTotals);
+  // Round up to the next "nice" number (e.g. 102345 → 120000, 187000 → 200000)
+  const niceStep = Math.pow(10, Math.floor(Math.log10(Math.max(dataMax, 1))) - 1) * 2;
+  const Y_MAX = Math.max(100000, Math.ceil(dataMax * 1.1 / niceStep) * niceStep);
+  const Y_STEP = Y_MAX / 10;
+ 
   const mainCanvas = document.getElementById('missionChart');
   mainCanvas.width        = canvasW;
   mainCanvas.style.width  = canvasW + 'px';
   mainCanvas.style.height = CHART_H + 'px';
   mainCanvas.height       = CHART_H;
-
+ 
   const chart = new Chart(mainCanvas.getContext('2d'), {
     type: 'bar',
     data: { labels, datasets: buildDatasets(data) },
@@ -366,11 +375,11 @@ function initChart(data) {
         },
         y: {
           stacked: true, display: false,
-          min: 0, max: 100000,
+          min: 0, max: Y_MAX,
           ticks: {
             color: 'rgba(255,255,255,0.55)',
             font: { family: 'Roboto', size: 13, weight: '400' },
-            stepSize: 10000,
+            stepSize: Y_STEP,
             callback: v => v >= 1000 ? (v/1000).toFixed(0)+'K' : '0',
           },
           grid: { color: 'rgba(185,221,241,0.08)' },
@@ -379,10 +388,10 @@ function initChart(data) {
       },
     },
   });
-
+ 
   const yCanvas = document.getElementById('yaxisCanvas');
   let yChart = null;
-
+ 
   function syncYAxis() {
     const chartArea = chart.chartArea;
     if (!chartArea) return;
@@ -403,11 +412,11 @@ function initChart(data) {
         scales: {
           x: { display: false, stacked: true },
           y: {
-            stacked: true, display: true, min: 0, max: 100000,
+            stacked: true, display: true, min: 0, max: Y_MAX,
             ticks: {
               color: 'rgba(255,255,255,0.55)',
               font: { family: 'Roboto', size: 14, weight: '400' },
-              stepSize: 10000,
+              stepSize: Y_STEP,
               callback: v => v >= 1000 ? (v/1000).toFixed(0)+'K' : '0',
             },
             grid:   { color: 'rgba(185,221,241,0.08)', drawTicks: false },
@@ -417,40 +426,40 @@ function initChart(data) {
       },
     });
   }
-
+ 
   chart.options.animation = { duration: 0 };
   requestAnimationFrame(() => {
     chart.update();
     syncYAxis();
     chart.options.animation = { duration: 350 };
   });
-
+ 
   const scrollArea  = document.getElementById('scrollArea');
   const SCROLL_STEP = (BAR_W + 18) * 4;
-
+ 
   function updateArrows() {
     const sl = scrollArea.scrollLeft;
     const maxScroll = scrollArea.scrollWidth - scrollArea.clientWidth;
     document.getElementById('btnLeft').disabled  = sl <= 0;
     document.getElementById('btnRight').disabled = sl >= maxScroll - 1;
   }
-
+ 
   document.getElementById('btnLeft').addEventListener('click', () => {
     scrollArea.scrollBy({ left: -SCROLL_STEP, behavior: 'smooth' });
   });
   document.getElementById('btnRight').addEventListener('click', () => {
     scrollArea.scrollBy({ left: SCROLL_STEP, behavior: 'smooth' });
   });
-
+ 
   scrollArea.addEventListener('scroll', updateArrows);
   setTimeout(updateArrows, 120);
-
+ 
   const tooltip   = document.getElementById('tooltip');
   const TT_MARGIN = 8;
   const TT_OFFSET = 18;
   let lastIdx     = -1;
   let tooltipSide = 'right';
-
+ 
   function buildTooltipHTML(idx) {
     const row    = data[idx];
     const active = missions.filter(m => row[m.key] > 0);
@@ -471,7 +480,7 @@ function initChart(data) {
           </div>`).join('')}
       </div>`;
   }
-
+ 
   function positionTooltip(cx, cy) {
     const vw = window.innerWidth, vh = window.innerHeight;
     const tw = tooltip.offsetWidth || 240, th = tooltip.offsetHeight || 300;
@@ -484,7 +493,7 @@ function initChart(data) {
     tooltip.style.left = tx + 'px';
     tooltip.style.top  = ty + 'px';
   }
-
+ 
   mainCanvas.addEventListener('mouseenter', (e) => {
     tooltipSide = (e.clientX + TT_OFFSET + 240) <= (window.innerWidth - TT_MARGIN) ? 'right' : 'left';
   });
@@ -497,7 +506,7 @@ function initChart(data) {
     tooltip.classList.add('visible');
   });
   mainCanvas.addEventListener('mouseleave', () => { tooltip.classList.remove('visible'); lastIdx = -1; });
-
+ 
   mainCanvas.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
     const rect  = mainCanvas.getBoundingClientRect();
@@ -510,11 +519,11 @@ function initChart(data) {
     positionTooltip(touch.clientX, touch.clientY);
     tooltip.classList.add('visible');
   }, { passive: false });
-
+ 
   document.addEventListener('touchstart', (e) => {
     if (!mainCanvas.contains(e.target)) { tooltip.classList.remove('visible'); lastIdx = -1; }
   });
-
+ 
   const grid = document.getElementById('legendGrid');
   missions.forEach(m => {
     const item = document.createElement('div');
@@ -537,7 +546,8 @@ function initChart(data) {
     grid.appendChild(item);
   });
 }
-
+ 
+// ── Data loading ──
 if (USE_API) {
   fetch(API_URL)
     .then(r => r.json())
