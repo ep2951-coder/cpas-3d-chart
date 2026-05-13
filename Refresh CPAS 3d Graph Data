@@ -1,0 +1,37 @@
+name: Refresh CPAS 3d Graph data
+
+on:
+  schedule:
+    # runs every Monday at 06:00 UTC
+    - cron: '0 6 * * 1'
+  # you can also trigger it manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch and transform PSData
+        run: node scripts/fetch-cpas-data.js
+
+      - name: Commit updated JSON
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dashboard-data.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: refresh CPAS dashboard data"
+            git push
+          fi
