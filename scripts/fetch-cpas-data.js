@@ -1,3 +1,4 @@
+// note
 // fetches the DPO-CPAS dataset from the UN Peace & Security Data Hub (https://psdata.un.org/dataset/DPO-CPAS),
 // filters to "# of indicator data points entered", buckets monthly values into 
 // quarters, runs a cumulative total per mission, and writes the chart-ready JSON.
@@ -7,7 +8,7 @@ const path = require('path');
 
 const API_URL = 'https://api.psdata.un.org/public/data/DPO-CPAS/json';
 const TARGET_INDICATOR = '# of indicator data points entered';
-const OUTPUT_PATH = path.join(__dirname, '..', 'dashboard-data.json');
+const OUTPUT_PATH = path.join(__dirname, '..', '3d-graph-data.json');
 
 const MISSIONS = [
   'MINUSCA', 'MONUSCO', 'UNFICYP', 'UNMISS', 'UNIFIL', 'UNMIK',
@@ -20,7 +21,6 @@ async function main() {
   if (!res.ok) throw new Error(`PSData API returned ${res.status}: ${res.statusText}`);
   const apiResponse = await res.json();
 
-  // Unwrap response — PSData may return {data:[...]} or a flat array
   let rows = apiResponse;
   if (apiResponse && Array.isArray(apiResponse.data)) rows = apiResponse.data;
   else if (apiResponse && Array.isArray(apiResponse.results)) rows = apiResponse.results;
@@ -29,8 +29,7 @@ async function main() {
     throw new Error('Unexpected API response shape: ' + JSON.stringify(apiResponse).slice(0, 200));
   }
   console.log(`Received ${rows.length} rows total.`);
-
-  // Bucket: "YYYY-QN" → mission → summed monthly value
+  
   const buckets = {};
   const validMissions = new Set(MISSIONS);
 
@@ -48,8 +47,6 @@ async function main() {
     used++;
   });
   console.log(`Used ${used} rows matching indicator "${TARGET_INDICATOR}".`);
-
-  // Sort quarters chronologically and accumulate per-mission running totals
   const sortedKeys = Object.keys(buckets).sort();
   const running = {};
   MISSIONS.forEach(m => { running[m] = 0; });
