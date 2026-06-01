@@ -21,14 +21,14 @@
     display: flex;
     gap: 28px;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .pw-left {
     flex-shrink: 0;
     position: relative;
-    width: 260px;
-    height: 260px;
+    width: 340px;
+    height: 340px;
   }
 
   .pw-center {
@@ -55,7 +55,7 @@
 
   .pw-right {
     flex: 1;
-    min-width: 220px;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -84,6 +84,10 @@
     font-size: 0.78rem;
     color: rgba(255,255,255,0.7);
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .pw-row.active .pw-name { color: #fff; }
 
@@ -102,6 +106,7 @@
     color: rgba(255,255,255,0.55);
     min-width: 26px;
     text-align: right;
+    flex-shrink: 0;
   }
   .pw-row.active .pw-count { color: #fff; }
 
@@ -132,9 +137,21 @@
     color: #1b9ad2;
   }
 
-  @media (max-width: 540px) {
-    .pw { padding: 16px 12px; gap: 16px; }
-    .pw-left { width: 200px; height: 200px; }
+  @media (max-width: 600px) {
+    .pw {
+      flex-wrap: wrap;
+      padding: 0px 12px 20px;
+      gap: 16px;
+    }
+    .pw-left {
+      width: 220px;
+      height: 220px;
+      margin: 0 auto;
+    }
+    .pw-right {
+      width: 100%;
+      flex: none;
+    }
     .pw-bar-wrap { width: 48px; }
   }
 </style>
@@ -142,9 +159,6 @@
 <body>
 
 <div class="pw">
-  <p style="width:100%; font-size:1rem; color:white; margin-bottom:4px;">
-    Click on a section to isolate it. Hover over slices or rows to view indicator counts.
-  </p>
   <div class="pw-left">
     <canvas id="pieChart" role="img" aria-label="Donut chart showing CPAS indicators by section. Force leads with 103, followed by Other (97) and Civil Affairs (72).">
       CPAS indicators by section: Force 103, Other 97, Civil Affairs 72, Political Affairs 71, Human Rights 58, UNMAS 45, UNPOL 39, Justice/Corrections 37, JOC 37, DDR 25, Electoral Affairs 19, Child Protection 14, Gender 14, SCPI 13, JMAC 8, DSS 2, JMPU 1.
@@ -161,23 +175,23 @@
 
 <script>
 const sections = [
-  { label: 'Force',             value: 103, color: '#009EDB' },
-  { label: 'Other',             value: 97,  color: '#25e6d5' },
-  { label: 'Civil Affairs',     value: 72,  color: '#8ab6e9' },
-  { label: 'Political Affairs', value: 71,  color: '#509E3E' },
-  { label: 'Human Rights',      value: 58,  color: '#DAA520' },
-  { label: 'United Nations Mine Action Service (UNMAS)',             value: 45,  color: '#FF7F50' },
-  { label: 'United Nations Police (UNPOL)',             value: 39,  color: '#1b9ad2' },
-  { label: 'Justice / Corrections',   value: 37,  color: '#A01D43' },
-  { label: 'Joint Operations Centre (JOC)',               value: 37,  color: '#007D7E' },
-  { label: 'Disarmament, Demobilization, and Reintegration (DDR)',               value: 25,  color: '#B1E0A4' },
-  { label: 'Electoral Affairs', value: 19,  color: '#FD3C2D' },
-  { label: 'Child Protection',  value: 14,  color: '#AA5000' },
-  { label: 'Gender',            value: 14,  color: '#bfbfbf' },
-  { label: 'Strategic Communications and Public Information  (SCPI)',              value: 13,  color: '#B9DDF1' },
-  { label: 'Joint Mission Analysis Centre (JMAC)',              value: 8,   color: '#8B6F47' },
-  { label: 'United Nations Department of Safety and Security (DSS)',               value: 2,   color: '#E7C6D0' },
-  { label: 'Joint Mission Planning Unit (JMPU)',              value: 1,   color: '#FEE6CD' },
+  { label: 'Force',                                                        value: 103, color: '#009EDB' },
+  { label: 'Other',                                                        value: 97,  color: '#25e6d5' },
+  { label: 'Civil Affairs',                                                value: 72,  color: '#8ab6e9' },
+  { label: 'Political Affairs',                                            value: 71,  color: '#509E3E' },
+  { label: 'Human Rights',                                                 value: 58,  color: '#DAA520' },
+  { label: 'United Nations Mine Action Service (UNMAS)',                   value: 45,  color: '#FF7F50' },
+  { label: 'United Nations Police (UNPOL)',                                value: 39,  color: '#1b9ad2' },
+  { label: 'Justice / Corrections',                                        value: 37,  color: '#A01D43' },
+  { label: 'Joint Operations Centre (JOC)',                                value: 37,  color: '#007D7E' },
+  { label: 'Disarmament, Demobilization, and Reintegration (DDR)',         value: 25,  color: '#B1E0A4' },
+  { label: 'Electoral Affairs',                                            value: 19,  color: '#FD3C2D' },
+  { label: 'Child Protection',                                             value: 14,  color: '#AA5000' },
+  { label: 'Gender',                                                       value: 14,  color: '#bfbfbf' },
+  { label: 'Strategic Communications and Public Information (SCPI)',       value: 13,  color: '#B9DDF1' },
+  { label: 'Joint Mission Analysis Centre (JMAC)',                         value: 8,   color: '#8B6F47' },
+  { label: 'United Nations Department of Safety and Security (DSS)',       value: 2,   color: '#E7C6D0' },
+  { label: 'Joint Mission Planning Unit (JMPU)',                           value: 1,   color: '#FEE6CD' },
 ];
 
 const TOTAL = 663;
@@ -286,6 +300,11 @@ document.getElementById('pieChart').addEventListener('mouseleave', () => {
   tip.classList.remove('visible');
   if (!active) resetAll();
 });
+
+scrollArea = document.getElementById('pwList');
+setTimeout(() => {
+  scrollArea.scrollLeft = scrollArea.scrollWidth;
+}, 120);
 </script>
 
 </body>
