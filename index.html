@@ -451,8 +451,11 @@ function initChart(data) {
     scrollArea.scrollBy({ left: SCROLL_STEP, behavior: 'smooth' });
   });
  
-  scrollArea.addEventListener('scroll', updateArrows);
-  setTimeout(updateArrows, 120);
+scrollArea.addEventListener('scroll', updateArrows);
+setTimeout(() => {
+  scrollArea.scrollLeft = scrollArea.scrollWidth;
+  updateArrows();
+}, 120);
  
   const tooltip   = document.getElementById('tooltip');
   const TT_MARGIN = 8;
